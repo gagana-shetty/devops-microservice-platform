@@ -1,5 +1,19 @@
 pipeline {
-  agent any
+  agent {
+    kubernetes {
+      yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command:
+    - cat
+    tty: true
+'''
+    }
+  }
 
   stages {
 
@@ -12,15 +26,15 @@ pipeline {
 
     stage('Deploy to Kubernetes') {
       steps {
-        sh '''
-        echo "Applying Kubernetes manifests..."
-
-        kubectl apply -f k8s/deployment.yaml
-        kubectl apply -f k8s/service.yaml
-        '''
+        container('kubectl') {
+          sh '''
+          echo "Applying Kubernetes manifests..."
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          '''
+        }
       }
     }
 
   }
 }
-
