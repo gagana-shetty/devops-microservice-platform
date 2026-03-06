@@ -1,21 +1,37 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:latest
+    command:
+    - cat
+    tty: true
+'''
+        }
+    }
 
     stages {
 
-        stage('Clone Repo') {
+        stage('Build Image') {
             steps {
-                echo "Cloning repository..."
+                container('kaniko') {
+                    sh '''
+                    /kaniko/executor \
+                      --context $WORKSPACE \
+                      --dockerfile app/backend/Dockerfile \
+                      --destination devops-app:latest \
+                      --no-push
+                    '''
+                }
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t devops-app:latest app/backend'
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
+        stage('Deploy') {
             steps {
                 sh 'kubectl apply -f k8s/deployment.yaml'
                 sh 'kubectl apply -f k8s/service.yaml'
