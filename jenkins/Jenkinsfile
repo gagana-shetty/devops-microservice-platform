@@ -3,24 +3,21 @@ pipeline {
 
     stages {
 
-        stage('Build Docker Image') {
-            agent {
-                docker {
-                    image 'docker:24.0'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                }
-            }
+        stage('Build Image with Kaniko') {
             steps {
-                sh 'docker build -t devops-app:latest app/backend'
+                container('kaniko') {
+                    sh '''
+                    /kaniko/executor \
+                      --context=app/backend \
+                      --dockerfile=app/backend/Dockerfile \
+                      --destination=devops-app:latest \
+                      --no-push
+                    '''
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
-            agent {
-                docker {
-                    image 'bitnami/kubectl:latest'
-                }
-            }
             steps {
                 sh 'kubectl apply -f kubernetes/'
             }
@@ -28,4 +25,3 @@ pipeline {
 
     }
 }
-
