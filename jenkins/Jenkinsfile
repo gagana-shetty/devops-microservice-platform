@@ -10,7 +10,7 @@ metadata:
 spec:
   containers:
   - name: kaniko
-    image: docker.io/kaniko-project/executor:latest
+    image: gcr.io/kaniko-project/executor:latest
     command:
     - /busybox/cat
     tty: true
