@@ -1,5 +1,11 @@
 pipeline {
-  agent any
+
+  agent {
+    docker {
+      image 'docker:24.0.5'
+      args '-v /var/run/docker.sock:/var/run/docker.sock'
+    }
+  }
 
   stages {
 
@@ -13,9 +19,7 @@ pipeline {
     stage('Build Docker Image') {
       steps {
         sh '''
-        echo "Building Docker image inside Minikube..."
-
-        eval $(minikube docker-env)
+        echo "Building Docker image..."
         docker build -t devops-app:latest app/backend
         '''
       }
@@ -24,7 +28,12 @@ pipeline {
     stage('Deploy to Kubernetes') {
       steps {
         sh '''
-        echo "Deploying application to Kubernetes..."
+        echo "Deploying to Kubernetes..."
+
+        apk add --no-cache curl
+        curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        mv kubectl /usr/local/bin/
 
         kubectl apply -f k8s/deployment.yaml
         kubectl apply -f k8s/service.yaml
@@ -42,4 +51,6 @@ pipeline {
       echo "Pipeline failed!"
     }
   }
+
 }
+
