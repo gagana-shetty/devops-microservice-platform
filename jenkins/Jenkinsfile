@@ -1,42 +1,73 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml '''
+  agent {
+    kubernetes {
+      yaml '''
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    app: jenkins-kaniko
 spec:
   containers:
   - name: kaniko
-    image: gcr.io/kaniko-project/executor:latest
+    image: docker.io/kaniko-project/executor:latest
     command:
-    - cat
+    - /busybox/cat
     tty: true
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
+  volumes:
+  - name: workspace-volume
+    emptyDir: {}
 '''
-        }
+    }
+  }
+
+  stages {
+
+    stage('Checkout Code') {
+      steps {
+        echo "Cloning repository..."
+        checkout scm
+      }
     }
 
-    stages {
+    stage('Build Docker Image') {
+      steps {
+        container('kaniko') {
+          sh '''
+          echo "Building Docker image using Kaniko..."
 
-        stage('Build Image') {
-            steps {
-                container('kaniko') {
-                    sh '''
-                    /kaniko/executor \
-                      --context $WORKSPACE \
-                      --dockerfile app/backend/Dockerfile \
-                      --destination devops-app:latest \
-                      --no-push
-                    '''
-                }
-            }
+          /kaniko/executor \
+            --context $WORKSPACE \
+            --dockerfile app/backend/Dockerfile \
+            --destination devops-app:latest \
+            --no-push
+          '''
         }
-
-        stage('Deploy') {
-            steps {
-                sh 'kubectl apply -f k8s/deployment.yaml'
-                sh 'kubectl apply -f k8s/service.yaml'
-            }
-        }
-
+      }
     }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        sh '''
+        echo "Deploying application to Kubernetes..."
+
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        '''
+      }
+    }
+
+  }
+
+  post {
+    success {
+      echo "Pipeline completed successfully!"
+    }
+    failure {
+      echo "Pipeline failed."
+    }
+  }
 }
