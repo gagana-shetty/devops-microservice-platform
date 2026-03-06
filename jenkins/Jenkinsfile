@@ -1,39 +1,19 @@
 pipeline {
-
-  agent {
-    docker {
-      image 'docker:24.0.5'
-      args '-v /var/run/docker.sock:/var/run/docker.sock'
-    }
-  }
+  agent any
 
   stages {
 
     stage('Checkout Code') {
       steps {
-        echo "Cloning repository..."
+        echo "Fetching code from GitHub..."
         checkout scm
-      }
-    }
-
-    stage('Build Docker Image') {
-      steps {
-        sh '''
-        echo "Building Docker image..."
-        docker build -t devops-app:latest app/backend
-        '''
       }
     }
 
     stage('Deploy to Kubernetes') {
       steps {
         sh '''
-        echo "Deploying to Kubernetes..."
-
-        apk add --no-cache curl
-        curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
-        chmod +x kubectl
-        mv kubectl /usr/local/bin/
+        echo "Applying Kubernetes manifests..."
 
         kubectl apply -f k8s/deployment.yaml
         kubectl apply -f k8s/service.yaml
@@ -42,15 +22,5 @@ pipeline {
     }
 
   }
-
-  post {
-    success {
-      echo "Pipeline completed successfully!"
-    }
-    failure {
-      echo "Pipeline failed!"
-    }
-  }
-
 }
 
