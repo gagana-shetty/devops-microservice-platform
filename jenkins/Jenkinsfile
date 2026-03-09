@@ -15,6 +15,9 @@ spec:
     args:
     - -c
     - while true; do sleep 30; done
+    env:
+    -name: DOCKER_CONFIG
+    value: /kaniko/.docker
     volumeMounts:
     - name: docker-config
       mountPath: /kaniko/.docker
