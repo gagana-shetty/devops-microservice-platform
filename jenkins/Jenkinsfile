@@ -52,7 +52,7 @@ spec:
                     sh '''
                     /kaniko/executor \
                       --dockerfile=app/backend/Dockerfile \
-                      --context=$(pwd) \
+                      --context=$(pwd)/app/backend \
                       --destination=$IMAGE:latest \
                       --skip-tls-verify \
                       --skip-push-permission-check
