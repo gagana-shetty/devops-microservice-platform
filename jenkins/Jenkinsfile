@@ -8,11 +8,12 @@ kind: Pod
 spec:
   containers:
   - name: kaniko
-    image: gcr.io/kaniko-project/executor:latest
+    image: gcr.io/kaniko-project/executor:debug
     command:
-    - /busybox/sleep
+    - /busybox/sh
     args:
-    - "999999"
+    - -c
+    - "while true; do sleep 30; done"
     tty: true
 '''
         }
@@ -38,7 +39,6 @@ spec:
                       --dockerfile=app/backend/Dockerfile \
                       --context=$(pwd) \
                       --destination=$IMAGE:latest \
-                      --insecure \
                       --skip-tls-verify
                     '''
                 }
@@ -50,11 +50,9 @@ spec:
                 sh '''
                 curl -LO https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
                 chmod +x kubectl
-
                 ./kubectl rollout restart deployment devops-app
                 '''
             }
         }
-
     }
 }
