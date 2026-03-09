@@ -43,6 +43,8 @@ spec:
             steps {
                 container('kaniko') {
                     sh '''
+                    cp /kaniko/.docker/.dockerconfigjson /kaniko/.docker/config.json
+
                     /kaniko/executor \
                       --dockerfile=app/backend/Dockerfile \
                       --context=$(pwd) \
