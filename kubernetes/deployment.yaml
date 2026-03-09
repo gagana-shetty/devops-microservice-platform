@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: devops-app
-        image: gagana1994/devops-microservice-app:1773080372
+        image: gagana1994/devops-microservice-app:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
