@@ -1,11 +1,5 @@
 pipeline {
-
-    agent {
-        docker {
-            image 'docker:24.0.5'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
 
     environment {
         IMAGE = "gagana1994/devops-microservice-app"
@@ -19,19 +13,17 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build and Push Image') {
             steps {
                 sh '''
-                docker build -t $IMAGE:latest ./app/backend
-                '''
-            }
-        }
+                echo "Building image with Kaniko..."
 
-        stage('Push Docker Image') {
-            steps {
-                sh '''
-                docker login -u gagana1994 -p $DOCKER_PASSWORD
-                docker push $IMAGE:latest
+                docker run \
+                -v $(pwd):/workspace \
+                gcr.io/kaniko-project/executor:latest \
+                --dockerfile=/workspace/app/backend/Dockerfile \
+                --context=/workspace \
+                --destination=$IMAGE:latest
                 '''
             }
         }
@@ -46,6 +38,5 @@ pipeline {
                 '''
             }
         }
-
     }
 }
