@@ -1,7 +1,7 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml """
+  agent {
+    kubernetes {
+      yaml '''
 apiVersion: v1
 kind: Pod
 spec:
@@ -9,32 +9,34 @@ spec:
   - name: kubectl
     image: bitnami/kubectl:latest
     command:
-      - cat
+      - /bin/sh
+      - -c
+      - "sleep 3600"
     tty: true
-"""
-        }
+'''
+    }
+  }
+
+  stages {
+
+    stage('Checkout Code') {
+      steps {
+        checkout scm
+      }
     }
 
-    stages {
+    stage('Deploy to Kubernetes') {
+      steps {
+        container('kubectl') {
+          sh '''
+          echo "Deploying to Kubernetes..."
 
-        stage('Checkout Code') {
-            steps {
-                checkout scm
-            }
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          '''
         }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                container('kubectl') {
-                   sh '''
-                   echo "Starting deployment..."
-                   kubectl apply -f kubernetes/deployment.yaml --validate=false
-                   kubectl apply -f kubernetes/service.yaml --validate=false
-                   echo "Deployment commands sent."
-                   '''
-                }
-            }
-        }
-
+      }
     }
+
+  }
 }
