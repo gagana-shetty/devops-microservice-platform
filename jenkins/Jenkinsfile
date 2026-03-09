@@ -1,40 +1,40 @@
 pipeline {
-  agent {
-    kubernetes {
-      yaml '''
+    agent {
+        kubernetes {
+            yaml """
 apiVersion: v1
 kind: Pod
 spec:
   containers:
   - name: kubectl
-    image: lachlanevenson/k8s-kubectl:v1.29.0
+    image: bitnami/kubectl:1.30 #using this
     command:
-    - cat
+      - cat
     tty: true
-'''
-    }
-  }
-
-  stages {
-
-    stage('Checkout Code') {
-      steps {
-        echo "Fetching code from GitHub..."
-        checkout scm
-      }
-    }
-
-    stage('Deploy to Kubernetes') {
-      steps {
-        container('kubectl') {
-          sh '''
-          echo "Applying Kubernetes manifests..."
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-          '''
+"""
         }
-      }
     }
 
-  }
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                container('kubectl') {
+                    sh '''
+                    echo "Deploying to Kubernetes..."
+
+                    kubectl apply -f k8s/deployment.yaml
+                    kubectl apply -f k8s/service.yaml
+                    '''
+                }
+            }
+        }
+
+    }
 }
