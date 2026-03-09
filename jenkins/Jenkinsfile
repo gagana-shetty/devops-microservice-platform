@@ -9,7 +9,7 @@ pipeline {
             }
         }
 
-        stage('Install kubectl') {
+        stage('Download kubectl') {
             steps {
                 sh '''
                 echo "Downloading kubectl..."
@@ -27,6 +27,16 @@ pipeline {
 
                 ./kubectl apply -f kubernetes/deployment.yaml
                 ./kubectl apply -f kubernetes/service.yaml
+                '''
+            }
+        }
+
+        stage('Restart Deployment') {
+            steps {
+                sh '''
+                echo "Restarting Kubernetes deployment..."
+
+                ./kubectl rollout restart deployment devops-app
                 '''
             }
         }
