@@ -1,5 +1,15 @@
 pipeline {
-    agent any
+
+    agent {
+        docker {
+            image 'docker:24.0.5'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+
+    environment {
+        IMAGE = "gagana1994/devops-microservice-app"
+    }
 
     stages {
 
@@ -9,13 +19,19 @@ pipeline {
             }
         }
 
-        stage('Download kubectl') {
+        stage('Build Docker Image') {
             steps {
                 sh '''
-                echo "Downloading kubectl..."
+                docker build -t $IMAGE:latest ./app/backend
+                '''
+            }
+        }
 
-                curl -LO https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
-                chmod +x kubectl
+        stage('Push Docker Image') {
+            steps {
+                sh '''
+                docker login -u gagana1994 -p $DOCKER_PASSWORD
+                docker push $IMAGE:latest
                 '''
             }
         }
@@ -23,18 +39,8 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh '''
-                echo "Deploying application..."
-
-                ./kubectl apply -f kubernetes/deployment.yaml
-                ./kubectl apply -f kubernetes/service.yaml
-                '''
-            }
-        }
-
-        stage('Restart Deployment') {
-            steps {
-                sh '''
-                echo "Restarting Kubernetes deployment..."
+                curl -LO https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
+                chmod +x kubectl
 
                 ./kubectl rollout restart deployment devops-app
                 '''
