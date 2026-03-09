@@ -9,10 +9,22 @@ pipeline {
             }
         }
 
+        stage('Install kubectl') {
+            steps {
+                sh '''
+                echo "Installing kubectl..."
+
+                curl -LO https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
+                chmod +x kubectl
+                mv kubectl /usr/local/bin/
+                '''
+            }
+        }
+
         stage('Deploy to Kubernetes') {
             steps {
                 sh '''
-                echo "Deploying application............."
+                echo "Deploying application..."
 
                 kubectl apply -f k8s/deployment.yaml
                 kubectl apply -f k8s/service.yaml
