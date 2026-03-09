@@ -28,8 +28,8 @@ spec:
                 container('kubectl') {
                    sh '''
                    echo "Starting deployment..."
-                   kubectl apply -f k8s/deployment.yaml --validate=false
-                   kubectl apply -f k8s/service.yaml --validate=false
+                   kubectl apply -f kubernetes/deployment.yaml --validate=false
+                   kubectl apply -f kubernetes/service.yaml --validate=false
                    echo "Deployment commands sent."
                    '''
                 }
