@@ -26,12 +26,12 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
-                    sh '''
-                    echo "Deploying to Kubernetes..."
-
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl apply -f k8s/service.yaml
-                    '''
+                   sh '''
+                   echo "Starting deployment..."
+                   kubectl apply -f k8s/deployment.yaml --validate=false
+                   kubectl apply -f k8s/service.yaml --validate=false
+                   echo "Deployment commands sent."
+                   '''
                 }
             }
         }
