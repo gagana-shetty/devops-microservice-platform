@@ -47,7 +47,6 @@ spec:
                       --dockerfile=app/backend/Dockerfile \
                       --context=$(pwd) \
                       --destination=$IMAGE:latest \
-                      --docker-config=/kaniko/.docker \
                       --skip-tls-verify
                     '''
                 }
