@@ -6,8 +6,8 @@ pipeline {
 apiVersion: v1
 kind: Pod
 spec:
-
   containers:
+
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
     command:
@@ -15,17 +15,24 @@ spec:
     args:
     - -c
     - while true; do sleep 30; done
+
     env:
-    -name: DOCKER_CONFIG
-    value: /kaniko/.docker
+    - name: DOCKER_CONFIG
+      value: /kaniko/.docker
+
     volumeMounts:
     - name: docker-config
       mountPath: /kaniko/.docker
+    - name: workspace-volume
+      mountPath: /home/jenkins/agent
 
   volumes:
   - name: docker-config
     secret:
       secretName: dockerhub-secret
+
+  - name: workspace-volume
+    emptyDir: {}
 '''
         }
     }
@@ -49,7 +56,7 @@ spec:
                     /kaniko/executor \
                       --dockerfile=app/backend/Dockerfile \
                       --context=$(pwd) \
-                      --destination=gagana1994/devops-microservice-app:latest \
+                      --destination=$IMAGE:latest \
                       --skip-tls-verify
                     '''
                 }
@@ -59,8 +66,13 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 sh '''
+                echo "Downloading kubectl..."
+
                 curl -LO https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
                 chmod +x kubectl
+
+                echo "Restarting Kubernetes deployment..."
+
                 ./kubectl rollout restart deployment devops-app
                 '''
             }
