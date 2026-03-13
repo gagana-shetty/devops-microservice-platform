@@ -1,28 +1,37 @@
-const express = require("express");
-const redis = require("redis");
+const express = require('express');
+const client = require('prom-client');
 
 const app = express();
+const port = 3000;
 
-const client = redis.createClient({
-  url: "redis://redis:6379"
+// collect default metrics
+client.collectDefaultMetrics();
+
+// create request counter
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests'
 });
 
-client.connect();
-
-app.get("/", async (req, res) => {
-  let visits = await client.get("visits");
-  visits = visits ? parseInt(visits) + 1 : 1;
-  await client.set("visits", visits);
-
-  res.send(`Hello DevOps 🚀 Visits: ${visits}`);
+app.use((req, res, next) => {
+  httpRequestsTotal.inc();
+  next();
 });
 
-
-app.get("/health", (req, res) => {
-  res.status(200).send("OK");
+app.get('/', (req, res) => {
+  res.send('DevOps Microservice Running 🚀');
 });
 
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK' });
 });
 
+// metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
+
+app.listen(port, () => {
+  console.log(`App running on port ${port}`);
+});
