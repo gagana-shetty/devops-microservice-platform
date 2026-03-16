@@ -1,77 +1,137 @@
 pipeline {
 
-    agent {
-        kubernetes {
-            yaml '''
+  agent {
+    kubernetes {
+      yaml """
 apiVersion: v1
 kind: Pod
 spec:
   containers:
+  - name: node
+    image: node:18
+    command:
+      - cat
+    tty: true
+
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
     command:
-    - /busybox/sh
+      - /busybox/sh
     args:
-    - -c
-    - while true; do sleep 30; done
+      - -c
+      - while true; do sleep 30; done
     env:
-    - name: DOCKER_CONFIG
-      value: /kaniko/.docker
+      - name: DOCKER_CONFIG
+        value: /kaniko/.docker
     volumeMounts:
-    - name: docker-config
-      mountPath: /kaniko/.docker
-    - name: workspace-volume
-      mountPath: /home/jenkins/agent
+      - name: docker-config
+        mountPath: /kaniko/.docker
+
+  - name: trivy
+    image: aquasec/trivy:latest
+    command:
+      - cat
+    tty: true
 
   volumes:
-  - name: docker-config
-    secret:
-      secretName: dockerhub-secret
+    - name: docker-config
+      secret:
+        secretName: dockerhub-secret
+"""
+    }
+  }
 
-  - name: workspace-volume
-    emptyDir: {}
-'''
-        }
+  environment {
+    IMAGE_NAME = "gagana1994/devops-microservice-app"
+    IMAGE_TAG = "${BUILD_NUMBER}"
+  }
+
+  stages {
+
+    stage('Checkout Code') {
+      steps {
+        git 'https://github.com/gagana-shetty/devops-microservice-platform.git'
+      }
     }
 
-    environment {
-        IMAGE = "gagana1994/devops-microservice-app"
+    stage('Install Dependencies') {
+      steps {
+        container('node') {
+          sh '''
+          cd app/backend
+          npm install
+          '''
+        }
+      }
     }
 
-    stages {
-
-        stage('Checkout Code') {
-            steps {
-                echo "Webhooooook test: Jenkins Pipeline Triggered!!!"
-                checkout scm
-            }
+    stage('Run Tests') {
+      steps {
+        container('node') {
+          sh '''
+          cd app/backend
+          npm test || true
+          '''
         }
-
-        stage('Build and Push Image') {
-            steps {
-                container('kaniko') {
-                    sh '''
-                    /kaniko/executor \
-                      --dockerfile=app/backend/Dockerfile \
-                      --context=$(pwd)/app/backend \
-                      --destination=$IMAGE:latest \
-                      --skip-tls-verify \
-                      --skip-push-permission-check
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh '''
-                curl -LO https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
-                chmod +x kubectl
-
-                ./kubectl rollout restart deployment devops-app
-                '''
-            }
-        }
-
+      }
     }
+
+    stage('Filesystem Security Scan') {
+      steps {
+        container('trivy') {
+          sh '''
+          trivy fs .
+          '''
+        }
+      }
+    }
+
+    stage('Build and Push Docker Image') {
+      steps {
+        container('kaniko') {
+          sh '''
+          /kaniko/executor \
+            --dockerfile=app/backend/Dockerfile \
+            --context=app/backend \
+            --destination=$IMAGE_NAME:$IMAGE_TAG \
+            --destination=$IMAGE_NAME:latest \
+            --skip-tls-verify
+          '''
+        }
+      }
+    }
+
+    stage('Container Image Scan') {
+      steps {
+        container('trivy') {
+          sh '''
+          trivy image $IMAGE_NAME:$IMAGE_TAG || true
+          '''
+        }
+      }
+    }
+
+    stage('Update Kubernetes Deployment') {
+      steps {
+        sh '''
+        sed -i "s|image: .*|image: $IMAGE_NAME:$IMAGE_TAG|" kubernetes/deployment.yaml
+        '''
+      }
+    }
+
+    stage('Push Manifest Changes') {
+      steps {
+        sh '''
+        git config user.email "jenkins@local"
+        git config user.name "jenkins"
+
+        git add kubernetes/deployment.yaml
+        git commit -m "update image to $IMAGE_TAG" || true
+        git push origin main
+        '''
+      }
+    }
+
+  }
+
 }
